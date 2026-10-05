@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<article class="card" th:fragment="taskCard(task)" th:classappend="${'status-' + task.status.cssClass}">
+	<div class="card-top">
+		<h3 class="card-headline" th:text="${task.headline}">Headline</h3>
+		<form th:action="@{/tasks/{id}/delete(id=${task.id})}" method="post" class="inline"
+			  onsubmit="return confirm('Delete this task? This cannot be undone.')">
+			<input type="hidden" name="week" th:value="${weekStart}">
+			<button type="submit" class="icon-btn delete-btn" title="Delete task" aria-label="Delete task">
+				<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor"
+					 stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+					<path d="M2.5 4h11M6 4V2.5h4V4M4 4l.7 9.5h6.6L12 4M6.5 6.5v4.5M9.5 6.5v4.5"/>
+				</svg>
+			</button>
+		</form>
+	</div>
+	<p class="card-description" th:if="${!#strings.isEmpty(task.description)}" th:text="${task.description}">Description</p>
+	<div class="card-footer">
+		<span class="estimate" title="Estimated time" th:text="${task.estimateLabel}">1h</span>
+		<form th:action="@{/tasks/{id}/date(id=${task.id})}" method="post" class="inline">
+			<input type="hidden" name="week" th:value="${weekStart}">
+			<input type="date" name="date" class="card-date" th:value="${task.date}" required
+				   onchange="submitTaskDate(this)" title="Scheduled date" aria-label="Scheduled date">
+		</form>
+		<form th:action="@{/tasks/{id}/status(id=${task.id})}" method="post" class="inline">
+			<input type="hidden" name="week" th:value="${weekStart}">
+			<select name="status" class="status-select" onchange="this.form.submit()" aria-label="Status">
+				<option th:each="s : ${statuses}" th:value="${s}" th:text="${s.label}"
+						th:selected="${s == task.status}">To Do</option>
+			</select>
+		</form>
+	</div>
+</article>
+</body>
+</html>
