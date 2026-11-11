@@ -23,7 +23,13 @@
 				   onchange="if (this.value) this.form.submit()" title="Jump to the week of a date" aria-label="Jump to date">
 		</form>
 	</nav>
-	<button type="button" class="btn btn-primary" id="open-create">+ Create task</button>
+	<div class="topbar-actions">
+		<button type="button" class="btn btn-primary" id="open-create">+ Create task</button>
+		<span class="current-user" th:text="${currentUser}">user@example.com</span>
+		<form th:action="@{/logout}" method="post" class="inline">
+			<button type="submit" class="btn">Log out</button>
+		</form>
+	</div>
 </header>
 
 <main class="board">

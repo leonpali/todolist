@@ -12,6 +12,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import com.example.calendar.user.AppUser;
+import com.example.calendar.user.UserRepository;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,40 +31,48 @@ public class TaskService {
 			DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY);
 
 	private final TaskRepository repository;
+	private final UserRepository userRepository;
 	private final Clock clock;
 	private final Period completedRetention;
 
-	public TaskService(TaskRepository repository, Clock clock,
+	public TaskService(TaskRepository repository, UserRepository userRepository, Clock clock,
 			@Value("${calendar.tasks.completed-retention:P1M}") Period completedRetention) {
 		this.repository = repository;
+		this.userRepository = userRepository;
 		this.clock = clock;
 		this.completedRetention = completedRetention;
 	}
 
 	@Transactional
-	public Task create(TaskForm form) {
+	public Task create(String ownerEmail, TaskForm form) {
+		AppUser owner = userRepository.findById(ownerEmail)
+				.orElseThrow(() -> new IllegalStateException("Unknown user: " + ownerEmail));
 		String description = form.getDescription() == null ? "" : form.getDescription().strip();
-		Task task = new Task(form.getHeadline().strip(), description,
+		Task task = new Task(owner, form.getHeadline().strip(), description,
 				form.getEstimatedHours(), form.getStatus(), form.getDate(), clock.instant());
 		return repository.save(task);
 	}
 
 	@Transactional
-	public void updateStatus(UUID id, TaskStatus status) {
-		repository.findById(id).ifPresent(task -> task.changeStatus(status, clock.instant()));
+	public void updateStatus(String ownerEmail, UUID id, TaskStatus status) {
+		findOwned(ownerEmail, id).changeStatus(status, clock.instant());
 	}
 
 	@Transactional
-	public void updateDate(UUID id, LocalDate date) {
+	public void updateDate(String ownerEmail, UUID id, LocalDate date) {
 		if (!isWeekday(date)) {
 			throw new IllegalArgumentException("Tasks can only be scheduled Monday to Friday: " + date);
 		}
-		repository.findById(id).ifPresent(task -> task.changeDate(date));
+		findOwned(ownerEmail, id).changeDate(date);
 	}
 
 	@Transactional
-	public void delete(UUID id) {
-		repository.deleteById(id);
+	public void delete(String ownerEmail, UUID id) {
+		repository.delete(findOwned(ownerEmail, id));
+	}
+
+	private Task findOwned(String ownerEmail, UUID id) {
+		return repository.findByIdAndOwner_Email(id, ownerEmail).orElseThrow(() -> new TaskNotFoundException(id));
 	}
 
 	@Scheduled(cron = "${calendar.tasks.cleanup-cron:0 0 * * * *}")
@@ -88,8 +99,9 @@ public class TaskService {
 	}
 
 	@Transactional(readOnly = true)
-	public Map<DayOfWeek, List<Task>> tasksForWeek(LocalDate monday) {
-		List<Task> all = repository.findByDateBetweenOrderByCreatedAtAsc(monday, monday.plusDays(WEEKDAYS.size() - 1));
+	public Map<DayOfWeek, List<Task>> tasksForWeek(String ownerEmail, LocalDate monday) {
+		List<Task> all = repository.findByOwner_EmailAndDateBetweenOrderByCreatedAtAsc(
+				ownerEmail, monday, monday.plusDays(WEEKDAYS.size() - 1));
 		Map<DayOfWeek, List<Task>> result = new EnumMap<>(DayOfWeek.class);
 		for (DayOfWeek day : WEEKDAYS) {
 			result.put(day, all.stream().filter(t -> t.getDay() == day).toList());

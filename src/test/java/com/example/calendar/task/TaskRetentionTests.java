@@ -6,6 +6,9 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZonedDateTime;
 
+import com.example.calendar.user.AppUser;
+import com.example.calendar.user.UserRepository;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,9 +23,16 @@ class TaskRetentionTests {
 	@Autowired
 	TaskService service;
 
+	@Autowired
+	UserRepository users;
+
+	AppUser owner;
+
 	@BeforeEach
 	void clearTasks() {
 		repository.deleteAll();
+		users.deleteAll();
+		owner = users.save(new AppUser("owner@example.com", "$2a$04$notarealhashnotarealhashnotarealhashnotarealhashnotr", Instant.now()));
 	}
 
 	@Test
@@ -40,6 +50,6 @@ class TaskRetentionTests {
 	}
 
 	private Task save(String headline, TaskStatus status, Instant at) {
-		return repository.save(new Task(headline, "", 1, status, LocalDate.of(2026, 10, 5), at));
+		return repository.save(new Task(owner, headline, "", 1, status, LocalDate.of(2026, 10, 5), at));
 	}
 }

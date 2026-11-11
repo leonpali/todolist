@@ -9,8 +9,13 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+
+import com.example.calendar.user.AppUser;
 
 @Entity
 @Table(name = "task")
@@ -40,12 +45,17 @@ public class Task {
 
 	private Instant completedAt;
 
+	@ManyToOne(fetch = FetchType.LAZY, optional = false)
+	@JoinColumn(name = "owner_email", nullable = false, updatable = false)
+	private AppUser owner;
+
 	protected Task() {
 	}
 
-	public Task(String headline, String description, double estimatedHours, TaskStatus status, LocalDate date,
-			Instant now) {
+	public Task(AppUser owner, String headline, String description, double estimatedHours, TaskStatus status,
+			LocalDate date, Instant now) {
 		this.id = UUID.randomUUID();
+		this.owner = owner;
 		this.headline = headline;
 		this.description = description;
 		this.estimatedHours = estimatedHours;
@@ -69,6 +79,7 @@ public class Task {
 	}
 
 	public UUID getId() { return id; }
+	public AppUser getOwner() { return owner; }
 	public String getHeadline() { return headline; }
 	public String getDescription() { return description; }
 	public double getEstimatedHours() { return estimatedHours; }

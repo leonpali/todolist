@@ -7,6 +7,7 @@ import java.time.format.TextStyle;
 import java.time.temporal.IsoFields;
 import java.util.List;
 import java.util.Locale;
+import java.security.Principal;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -44,52 +45,55 @@ public class CalendarController {
 
 	@GetMapping("/")
 	public String calendar(@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate week,
-			Model model) {
+			Model model, Principal principal) {
 		LocalDate monday = TaskService.weekStart(week != null ? week : taskService.today());
 		if (!model.containsAttribute("taskForm")) {
 			TaskForm form = new TaskForm();
 			form.setDate(defaultDate(monday));
 			model.addAttribute("taskForm", form);
 		}
-		populate(model, monday);
+		populate(model, principal.getName(), monday);
 		return "calendar";
 	}
 
 	@PostMapping("/tasks")
 	public String create(@Valid @ModelAttribute("taskForm") TaskForm form, BindingResult result,
 			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate week,
-			Model model) {
+			Model model, Principal principal) {
 		if (result.hasErrors()) {
 			model.addAttribute("openCreateDialog", true);
-			populate(model, TaskService.weekStart(week != null ? week : taskService.today()));
+			populate(model, principal.getName(), TaskService.weekStart(week != null ? week : taskService.today()));
 			return "calendar";
 		}
-		Task task = taskService.create(form);
+		Task task = taskService.create(principal.getName(), form);
 		return redirectToWeek(task.getDate());
 	}
 
 	@PostMapping("/tasks/{id}/status")
 	public String updateStatus(@PathVariable UUID id, @RequestParam TaskStatus status,
-			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate week) {
-		taskService.updateStatus(id, status);
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate week,
+			Principal principal) {
+		taskService.updateStatus(principal.getName(), id, status);
 		return redirectToWeek(week);
 	}
 
 	@PostMapping("/tasks/{id}/date")
 	public String updateDate(@PathVariable UUID id,
 			@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate week) {
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate week,
+			Principal principal) {
 		if (!TaskService.isWeekday(date)) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tasks can only be scheduled Monday to Friday");
 		}
-		taskService.updateDate(id, date);
+		taskService.updateDate(principal.getName(), id, date);
 		return redirectToWeek(week);
 	}
 
 	@PostMapping("/tasks/{id}/delete")
 	public String delete(@PathVariable UUID id,
-			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate week) {
-		taskService.delete(id);
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate week,
+			Principal principal) {
+		taskService.delete(principal.getName(), id);
 		return redirectToWeek(week);
 	}
 
@@ -103,10 +107,12 @@ public class CalendarController {
 		return inShownWeek && TaskService.isWeekday(today) ? today : monday;
 	}
 
-	private void populate(Model model, LocalDate monday) {
+	private void populate(Model model, String ownerEmail, LocalDate monday) {
 		LocalDate today = taskService.today();
 		LocalDate friday = monday.plusDays(TaskService.WEEKDAYS.size() - 1);
-		Map<DayOfWeek, List<Task>> byDay = taskService.tasksForWeek(monday);
+		Map<DayOfWeek, List<Task>> byDay = taskService.tasksForWeek(ownerEmail, monday);
+
+		model.addAttribute("currentUser", ownerEmail);
 
 		model.addAttribute("weekStart", monday);
 		model.addAttribute("prevWeek", monday.minusWeeks(1));
