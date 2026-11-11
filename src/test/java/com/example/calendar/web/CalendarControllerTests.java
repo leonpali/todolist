@@ -3,42 +3,61 @@ package com.example.calendar.web;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
 import com.example.calendar.task.Task;
 import com.example.calendar.task.TaskRepository;
 import com.example.calendar.task.TaskStatus;
+import com.example.calendar.user.AppUser;
+import com.example.calendar.user.UserRepository;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
 
 @SpringBootTest
-@AutoConfigureMockMvc
 class CalendarControllerTests {
 
 	static final LocalDate MONDAY = LocalDate.of(2026, 10, 5);
 	static final LocalDate WEDNESDAY = MONDAY.plusDays(2);
+	static final String USER = "alice@example.com";
 
 	@Autowired
-	MockMvc mvc;
+	WebApplicationContext context;
 
 	@Autowired
 	TaskRepository repository;
 
+	@Autowired
+	UserRepository users;
+
+	MockMvc mvc;
+
+	/** Every request in this class is made by a logged-in user and carries a CSRF token. */
 	@BeforeEach
-	void clearTasks() {
+	void setUp() {
 		repository.deleteAll();
+		users.deleteAll();
+		users.save(new AppUser(USER, "$2a$04$notarealhashnotarealhashnotarealhashnotarealhashnotr", Instant.now()));
+		mvc = MockMvcBuilders.webAppContextSetup(context)
+				.apply(springSecurity())
+				.defaultRequest(get("/").with(user(USER)).with(csrf()))
+				.build();
 	}
 
 	@Test
