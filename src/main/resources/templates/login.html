@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Log in · Weekly Board</title>
+	<link rel="stylesheet" th:href="@{/css/calendar.css}">
+</head>
+<body class="auth-page">
+<main class="auth-card">
+	<h1>Weekly Board</h1>
+	<form th:action="@{/login}" method="post" class="dialog-form">
+		<h2>Log in</h2>
+		<p class="notice error" th:if="${param.error}">Invalid email or password.</p>
+		<p class="notice success" th:if="${param.logout}">You have been logged out.</p>
+		<p class="notice success" th:if="${param.registered}">Account created. You can log in now.</p>
+
+		<label>Email
+			<input type="email" name="email" maxlength="254" autocomplete="username" required autofocus>
+		</label>
+		<label>Password
+			<input type="password" name="password" maxlength="64" autocomplete="current-password" required>
+		</label>
+
+		<div class="dialog-actions">
+			<button type="submit" class="btn btn-primary">Log in</button>
+		</div>
+		<p class="auth-switch">No account yet? <a th:href="@{/register}">Create one</a></p>
+	</form>
+</main>
+</body>
+</html>
